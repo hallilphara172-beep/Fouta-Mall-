@@ -1,25 +1,28 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
 users = []
-products = []
+products = [
+    {"name": "Sac traditionnel", "price": "25€"},
+    {"name": "Tissu Fouta", "price": "15€"},
+]
 
 @app.route("/")
 def home():
-    return "Bienvenue sur FOUTA MALL API"
+    return render_template("index.html", products=products)
 
 @app.route("/register", methods=["POST"])
 def register():
     data = request.json
     users.append(data)
-    return jsonify({"message": "Utilisateur enregistré", "users": users})
+    return jsonify({"message": "Utilisateur enregistré"})
 
 @app.route("/add_product", methods=["POST"])
 def add_product():
     data = request.json
     products.append(data)
-    return jsonify({"message": "Produit ajouté", "products": products})
+    return jsonify({"message": "Produit ajouté"})
 
 @app.route("/products", methods=["GET"])
 def get_products():
