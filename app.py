@@ -1,108 +1,148 @@
-from flask import Flask, render_template_string, request, redirect, session
+# app.py
+from flask import Flask, render_template, request, redirect, session, url_for
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-products = [
-    {"id": 1, "name": "Chaussures Nike", "price": 15000,
-     "image": "https://via.placeholder.com/150"},
-    {"id": 2, "name": "Téléphone Samsung", "price": 120000,
-     "image": "https://via.placeholder.com/150"},
-    {"id": 3, "name": "Sac à main", "price": 20000,
-     "image": "https://via.placeholder.com/150"},
-]
 
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-<title>Fouta Mall</title>
-<style>
-body{font-family:Arial;background:#f5f5f5;margin:0}
-header{background:orange;color:white;padding:15px;font-size:22px}
-.container{padding:20px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.card{background:white;padding:15px;border-radius:10px;text-align:center}
-img{width:100%;border-radius:10px}
-button{background:orange;color:white;border:none;padding:10px;margin-top:10px;border-radius:5px;cursor:pointer}
-.cart{background:white;margin-top:30px;padding:20px;border-radius:10px}
-.total{font-size:20px;margin-top:10px}
-.remove{background:red}
-</style>
-</head>
-<body>
+# ---------------- DATABASE ----------------
+def init_db():
+    conn = sqlite3.connect("store.db")
+    c = conn.cursor()
 
-<header>🛒 Fouta Mall</header>
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS products(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        price REAL,
+        image TEXT
+    )
+    """)
 
-<div class="container">
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        password TEXT
+    )
+    """)
 
-<h2>Produits</h2>
+    conn.commit()
+    conn.close()
 
-<div class="grid">
-{% for p in products %}
-<div class="card">
-<img src="{{p.image}}">
-<h3>{{p.name}}</h3>
-<p>{{p.price}} FCFA</p>
-<form method="POST" action="/add">
-<input type="hidden" name="id" value="{{p.id}}">
-<button>Ajouter au panier</button>
-</form>
-</div>
-{% endfor %}
-</div>
 
-<div class="cart">
-<h2>Panier</h2>
+@app.before_first_request
+def setup():
+    init_db()
 
-{% if cart %}
-<ul>
-{% for item in cart %}
-<li>
-{{item.name}} - {{item.price}} FCFA
-<form method="POST" action="/remove" style="display:inline">
-<input type="hidden" name="id" value="{{item.id}}">
-<button class="remove">Supprimer</button>
-</form>
-</li>
-{% endfor %}
-</ul>
 
-<p class="total">Total : {{total}} FCFA</p>
-
-{% else %}
-<p>Panier vide</p>
-{% endif %}
-</div>
-
-</div>
-</body>
-</html>
-"""
-
+# ---------------- HOME ----------------
 @app.route("/")
 def home():
-    cart = session.get("cart", [])
-    total = sum(item["price"] for item in cart)
-    return render_template_string(HTML, products=products, cart=cart, total=total)
+    conn = sqlite3.connect("store.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM products")
+    products = c.fetchall()
+    conn.close()
+    return render_template("index.html", products=products)
 
-@app.route("/add", methods=["POST"])
-def add():
-    pid = int(request.form["id"])
-    cart = session.get("cart", [])
-    for p in products:
-        if p["id"] == pid:
-            cart.append(p)
+
+# ---------------- ADD PRODUCT ----------------
+@app.route("/add", methods=["GET", "POST"])
+def add_product():
+    if request.method == "POST":
+        name = request.form["name"]
+        price = request.form["price"]
+        image = request.form["image"]
+
+        conn = sqlite3.connect("store.db")
+        c = conn.cursor()
+        c.execute("INSERT INTO products(name,price,image) VALUES(?,?,?)",
+                  (name, price, image))
+        conn.commit()
+        conn.close()
+        return redirect("/")
+
+    return render_template("add.html")
+
+
+# ---------------- CART ----------------
+@app.route("/add_to_cart/<int:id>")
+def add_to_cart(id):
+    if "cart" not in session:
+        session["cart"] = []
+
+    cart = session["cart"]
+    cart.append(id)
     session["cart"] = cart
     return redirect("/")
 
-@app.route("/remove", methods=["POST"])
-def remove():
-    pid = int(request.form["id"])
-    cart = session.get("cart", [])
-    cart = [i for i in cart if i["id"] != pid]
-    session["cart"] = cart
+
+@app.route("/cart")
+def cart():
+    if "cart" not in session:
+        return render_template("cart.html", products=[])
+
+    ids = session["cart"]
+    conn = sqlite3.connect("store.db")
+    c = conn.cursor()
+
+    products = []
+    for i in ids:
+        c.execute("SELECT * FROM products WHERE id=?", (i,))
+        p = c.fetchone()
+        if p:
+            products.append(p)
+
+    conn.close()
+    return render_template("cart.html", products=products)
+
+
+# ---------------- LOGIN ----------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        conn = sqlite3.connect("store.db")
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username=? AND password=?",
+                  (username, password))
+        user = c.fetchone()
+        conn.close()
+
+        if user:
+            session["user"] = username
+            return redirect("/")
+    return render_template("login.html")
+
+
+# ---------------- REGISTER ----------------
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        conn = sqlite3.connect("store.db")
+        c = conn.cursor()
+        c.execute("INSERT INTO users(username,password) VALUES(?,?)",
+                  (username, password))
+        conn.commit()
+        conn.close()
+        return redirect("/login")
+
+    return render_template("register.html")
+
+
+# ---------------- LOGOUT ----------------
+@app.route("/logout")
+def logout():
+    session.clear()
     return redirect("/")
+
 
 if __name__ == "__main__":
     app.run(debug=True)
