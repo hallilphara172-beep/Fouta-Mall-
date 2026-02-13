@@ -1,42 +1,108 @@
-from flask import Flask, render_template, session, redirect, url_for, request
-import os
+from flask import Flask, render_template_string, request, redirect, session
 
 app = Flask(__name__)
-app.secret_key = "fouta_secret_key"
+app.secret_key = "secret123"
 
-# Produits fictifs
 products = [
-    {"id": 1, "name": "Fouta Traditionnelle", "price": 25, "image": "fouta1.jpg"},
-    {"id": 2, "name": "Fouta Luxe", "price": 40, "image": "fouta2.jpg"},
-    {"id": 3, "name": "Fouta Premium", "price": 60, "image": "fouta3.jpg"}
+    {"id": 1, "name": "Chaussures Nike", "price": 15000,
+     "image": "https://via.placeholder.com/150"},
+    {"id": 2, "name": "Téléphone Samsung", "price": 120000,
+     "image": "https://via.placeholder.com/150"},
+    {"id": 3, "name": "Sac à main", "price": 20000,
+     "image": "https://via.placeholder.com/150"},
 ]
 
-@app.route('/')
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fouta Mall</title>
+<style>
+body{font-family:Arial;background:#f5f5f5;margin:0}
+header{background:orange;color:white;padding:15px;font-size:22px}
+.container{padding:20px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{background:white;padding:15px;border-radius:10px;text-align:center}
+img{width:100%;border-radius:10px}
+button{background:orange;color:white;border:none;padding:10px;margin-top:10px;border-radius:5px;cursor:pointer}
+.cart{background:white;margin-top:30px;padding:20px;border-radius:10px}
+.total{font-size:20px;margin-top:10px}
+.remove{background:red}
+</style>
+</head>
+<body>
+
+<header>🛒 Fouta Mall</header>
+
+<div class="container">
+
+<h2>Produits</h2>
+
+<div class="grid">
+{% for p in products %}
+<div class="card">
+<img src="{{p.image}}">
+<h3>{{p.name}}</h3>
+<p>{{p.price}} FCFA</p>
+<form method="POST" action="/add">
+<input type="hidden" name="id" value="{{p.id}}">
+<button>Ajouter au panier</button>
+</form>
+</div>
+{% endfor %}
+</div>
+
+<div class="cart">
+<h2>Panier</h2>
+
+{% if cart %}
+<ul>
+{% for item in cart %}
+<li>
+{{item.name}} - {{item.price}} FCFA
+<form method="POST" action="/remove" style="display:inline">
+<input type="hidden" name="id" value="{{item.id}}">
+<button class="remove">Supprimer</button>
+</form>
+</li>
+{% endfor %}
+</ul>
+
+<p class="total">Total : {{total}} FCFA</p>
+
+{% else %}
+<p>Panier vide</p>
+{% endif %}
+</div>
+
+</div>
+</body>
+</html>
+"""
+
+@app.route("/")
 def home():
-    return render_template("index.html", products=products)
+    cart = session.get("cart", [])
+    total = sum(item["price"] for item in cart)
+    return render_template_string(HTML, products=products, cart=cart, total=total)
 
-@app.route('/products')
-def product_page():
-    return render_template("products.html", products=products)
+@app.route("/add", methods=["POST"])
+def add():
+    pid = int(request.form["id"])
+    cart = session.get("cart", [])
+    for p in products:
+        if p["id"] == pid:
+            cart.append(p)
+    session["cart"] = cart
+    return redirect("/")
 
-@app.route('/add_to_cart/<int:id>')
-def add_to_cart(id):
-    if "cart" not in session:
-        session["cart"] = []
-
-    session["cart"].append(id)
-    session.modified = True
-    return redirect(url_for("cart"))
-
-@app.route('/cart')
-def cart():
-    if "cart" not in session:
-        session["cart"] = []
-
-    cart_products = [p for p in products if p["id"] in session["cart"]]
-    total = sum(p["price"] for p in cart_products)
-
-    return render_template("cart.html", cart_products=cart_products, total=total)
+@app.route("/remove", methods=["POST"])
+def remove():
+    pid = int(request.form["id"])
+    cart = session.get("cart", [])
+    cart = [i for i in cart if i["id"] != pid]
+    session["cart"] = cart
+    return redirect("/")
 
 if __name__ == "__main__":
     app.run(debug=True)
