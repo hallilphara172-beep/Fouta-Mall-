@@ -6,31 +6,33 @@
 
 <style>
 body{
-    font-family: Arial;
+    font-family:Arial;
     margin:0;
-    background:#f5f5f5;
+    background:#f2f2f2;
 }
 
-/* HEADER */
 header{
-    background:#0d6efd;
+    background:linear-gradient(90deg,#009e60,#fcd116,#ce1126);
     color:white;
-    padding:20px;
+    padding:25px;
     text-align:center;
 }
 
-/* SECTION */
+.logo{
+    font-size:32px;
+    font-weight:bold;
+}
+
 section{
-    padding:40px;
+    padding:30px;
     text-align:center;
 }
 
-/* PRODUITS */
 .products{
     display:flex;
     justify-content:center;
-    gap:20px;
     flex-wrap:wrap;
+    gap:20px;
 }
 
 .card{
@@ -38,22 +40,32 @@ section{
     padding:20px;
     border-radius:10px;
     width:250px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.card img{
+    width:100%;
+    border-radius:8px;
 }
 
 button{
     background:#0d6efd;
     color:white;
     border:none;
-    padding:12px 20px;
-    font-size:16px;
+    padding:10px 15px;
     border-radius:6px;
+    margin-top:10px;
     cursor:pointer;
+}
+
+.cart{
+    margin-top:30px;
+    font-size:20px;
 }
 
 .whatsapp{
     background:#25D366;
-    margin-top:30px;
+    margin-top:20px;
 }
 </style>
 </head>
@@ -61,40 +73,60 @@ button{
 <body>
 
 <header>
-<h1>FOUTA MALL</h1>
-<p>Marketplace Africain</p>
+<div class="logo">FOUTA MALL</div>
+Marketplace Guinée • Côte d’Ivoire
 </header>
 
 <section>
+
 <h2>Nos Produits</h2>
 
 <div class="products">
 
 <div class="card">
+<img src="https://via.placeholder.com/250">
 <h3>Chaussures</h3>
-<p>Prix : 15 000 FCFA</p>
-<button>Acheter</button>
+<p>15 000 FCFA</p>
+<button onclick="add(15000)">Ajouter au panier</button>
 </div>
 
 <div class="card">
+<img src="https://via.placeholder.com/250">
 <h3>Téléphone</h3>
-<p>Prix : 75 000 FCFA</p>
-<button>Acheter</button>
+<p>75 000 FCFA</p>
+<button onclick="add(75000)">Ajouter au panier</button>
 </div>
 
 <div class="card">
+<img src="https://via.placeholder.com/250">
 <h3>Sac</h3>
-<p>Prix : 20 000 FCFA</p>
-<button>Acheter</button>
+<p>20 000 FCFA</p>
+<button onclick="add(20000)">Ajouter au panier</button>
 </div>
 
 </div>
 
-<button class="whatsapp" onclick="window.location.href='https://wa.me/221XXXXXXXXX'">
-Commander sur WhatsApp
-</button>
+<div class="cart">
+Total : <span id="total">0</span> FCFA
+</div>
+
+<button class="whatsapp" onclick="order()">Commander sur WhatsApp</button>
 
 </section>
+
+<script>
+let total = 0;
+
+function add(price){
+    total += price;
+    document.getElementById("total").innerText = total;
+}
+
+function order(){
+    let message = "Bonjour je veux commander pour " + total + " FCFA";
+    window.open("https://wa.me/2250715539898?text="+encodeURIComponent(message));
+}
+</script>
 
 </body>
 </html>
